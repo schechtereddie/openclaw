@@ -35,6 +35,8 @@ const cliAuthEpochDeps: CliAuthEpochDeps = { ...defaultCliAuthEpochDeps };
 export const CLI_AUTH_EPOCH_VERSION = 6;
 
 const GEMINI_CLI_PROVIDER_ID = "google-gemini-cli";
+const CLI_AUTH_EPOCH_KDF_SALT = "openclaw:cli-auth-epoch:v1";
+const CLI_AUTH_EPOCH_KDF_KEYLEN = 32;
 
 /** Overrides credential readers for auth-epoch unit tests. */
 export function setCliAuthEpochTestDeps(overrides: Partial<CliAuthEpochDeps>): void {
@@ -49,8 +51,11 @@ export function resetCliAuthEpochTestDeps(): void {
 function hashCliAuthEpochPart(value: string): string {
   // Epoch hashes detect local auth-state changes; they are not password
   // storage or credential verification.
-  // codeql[js/insufficient-password-hash]
-  return crypto.createHash("sha256").update(value).digest("hex");
+  // Use a computationally expensive KDF to avoid fast-hash handling of
+  // credential-derived material.
+  return crypto
+    .scryptSync(value, CLI_AUTH_EPOCH_KDF_SALT, CLI_AUTH_EPOCH_KDF_KEYLEN)
+    .toString("hex");
 }
 
 function encodeUnknown(value: unknown): string {
